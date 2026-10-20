@@ -1,0 +1,104 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK (NDK + CMake for React Native)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36 build-tools;35.0.0 ndk;27.1.12297006 cmake;3.22.1"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Fetch binary assets (logo + Manrope fonts)
+        run: |
+          mkdir -p assets/fonts android/app/src/main/assets/fonts
+          curl -fsSL "https://vibetalk.hamzabhulla.workers.dev/logo-mark.png" -o assets/logo-mark.png
+          fetch_font() {
+            url=$(curl -s "https://fonts.googleapis.com/css2?family=Manrope:wght@$1&display=swap" | grep -o "https://[^)]*" | head -1)
+            echo "weight $1 -> $url"
+            curl -fsSL "$url" -o "assets/fonts/Manrope-$2.ttf"
+          }
+          fetch_font 400 Regular
+          fetch_font 500 Medium
+          fetch_font 600 SemiBold
+          fetch_font 700 Bold
+          fetch_font 800 ExtraBold
+          cp assets/fonts/*.ttf android/app/src/main/assets/fonts/
+          ls -la assets assets/fonts
+
+      - name: Generate launcher icons from the logo
+        run: |
+          convert assets/logo-mark.png -trim +repage /tmp/mark.png
+          convert /tmp/mark.png -crop 100%x58%+0+0 +repage /tmp/mark_only.png
+          for spec in "mdpi 48" "hdpi 72" "xhdpi 96" "xxhdpi 144" "xxxhdpi 192"; do
+            set -- $spec
+            dir="android/app/src/main/res/mipmap-$1"
+            mkdir -p "$dir"
+            convert /tmp/mark_only.png -background "#FEFCF7" -flatten -resize $2x$2 -gravity center -extent $2x$2 "$dir/ic_launcher.png"
+            cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+          done
+          ls android/app/src/main/res/mipmap-hdpi/
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build release APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+
+      - name: Name the APK
+        id: apk
+        run: |
+          src="android/app/build/outputs/apk/release/app-release.apk"
+          name="VibeTalk-Android-v1.0.${{ github.run_number }}.apk"
+          cp "$src" "$name"
+          echo "path=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibetalk-apk
+          path: ${{ steps.apk.outputs.path }}
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: VibeTalk Android v1.0.${{ github.run_number }}
+          body: |
+            VibeTalk Android app (React Native + WatermelonDB, offline-first).
+            Download the APK below and install it. Login screen first,
+            your chats live on the device and sync when online.
+          files: ${{ steps.apk.outputs.path }}
+          
