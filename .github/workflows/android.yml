@@ -59,6 +59,7 @@ jobs:
 
       - name: Generate launcher icons from the logo
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
           convert assets/logo-mark.png -trim +repage /tmp/mark.png
           convert /tmp/mark.png -crop 100%x58%+0+0 +repage /tmp/mark_only.png
           for spec in "mdpi 48" "hdpi 72" "xhdpi 96" "xxhdpi 144" "xxxhdpi 192"; do
