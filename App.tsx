@@ -15,6 +15,8 @@ import {
 } from "lucide-react-native";
 import { TouchableOpacity, Text } from "react-native";
 import { AuthProvider, useAuth } from "./src/lib/auth";
+import "./src/lib/media"; // registers the media uploader with the sync engine
+import "./src/lib/e2ee"; // registers the E2EE hooks with the sync engine
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { RegisterScreen } from "./src/screens/RegisterScreen";
 import { ChatsScreen } from "./src/screens/ChatsScreen";
@@ -23,6 +25,7 @@ import { PeopleScreen } from "./src/screens/PeopleScreen";
 import { CallsScreen } from "./src/screens/CallsScreen";
 import { YouScreen } from "./src/screens/YouScreen";
 import { ScreenHead } from "./src/components/ScreenHead";
+import { CallOverlay } from "./src/components/CallOverlay";
 import { Avatar } from "./src/components/Avatar";
 import { colors, font } from "./src/theme";
 
@@ -147,7 +150,10 @@ function Root() {
   return (
     <NavigationContainer>
       {user ? (
-        <MainTabs />
+        <>
+          <MainTabs />
+          <CallOverlay />
+        </>
       ) : (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
           <AuthStack.Screen name="Login" component={LoginScreen} />

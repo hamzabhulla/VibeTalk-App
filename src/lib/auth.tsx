@@ -8,7 +8,31 @@ import React, {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { startSync, stopSync } from "./sync";
+import { initCalls, teardownCalls } from "./calls";
+import { initPush, teardownPush } from "./push";
 import { database } from "../db";
+
+// Boot is idempotent per user: getSession + INITIAL_SESSION both
+// fire at startup, and TOKEN_REFRESHED fires hourly/on foreground.
+// Re-booting would re-run initCalls (whose teardown kills a live
+// call) and stack duplicate push subscribers.
+let bootedFor: string | null = null;
+
+function bootUserServices(uid: string, fallbackName: string) {
+  if (bootedFor === uid) return;
+  bootedFor = uid;
+  startSync(uid);
+  void initPush(uid);
+  // The call engine needs my display name for outgoing invites.
+  void supabase
+    .from("profiles_public")
+    .select("display_name")
+    .eq("id", uid)
+    .maybeSingle()
+    .then(({ data }) => {
+      initCalls(uid, (data as any)?.display_name ?? fallbackName);
+    });
+}
 
 type AuthState = {
   user: User | null;
@@ -35,12 +59,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(data.session);
       setLoading(false);
-      if (data.session) startSync(data.session.user.id);
+      if (data.session) {
+        bootUserServices(
+          data.session.user.id,
+          data.session.user.email?.split("@")[0] ?? "Someone",
+        );
+      }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      if (s) startSync(s.user.id);
-      else stopSync();
+      if (s) {
+        bootUserServices(s.user.id, s.user.email?.split("@")[0] ?? "Someone");
+      } else {
+        bootedFor = null;
+        stopSync();
+        teardownCalls();
+        void teardownPush();
+      }
     });
     return () => {
       mounted = false;
@@ -68,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut: AuthState["signOut"] = async () => {
     stopSync();
+    teardownCalls();
+    await teardownPush();
     await supabase.auth.signOut();
     // Offline data belongs to the account — wipe the local mirror so
     // the next account on this device starts clean.

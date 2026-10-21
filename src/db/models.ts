@@ -37,6 +37,16 @@ export class Message extends Model {
   @text("body") body!: string;
   @text("msg_type") msgType!: string;
   @text("attachment_url") attachmentUrl?: string;
+  @text("attachment_meta") attachmentMeta?: string;
   @date("created_at") createdAt!: Date;
+  @field("edited_at") editedAt?: number;
+  @field("deleted_at") deletedAt?: number;
   @text("status") status!: string; // 'synced' | 'pending' | 'failed'
+}
+
+export class Reaction extends Model {
+  static table = "reactions";
+  @text("message_id") messageId!: string;
+  @text("user_id") userId!: string;
+  @text("emoji") emoji!: string;
 }

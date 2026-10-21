@@ -4,7 +4,7 @@ import { appSchema, tableSchema } from "@nozbe/watermelondb";
 // shape for people, rooms + messages for chats), plus local-only sync
 // state on messages (status) and rooms (unread_count, DM denorm).
 export const schema = appSchema({
-  version: 1,
+  version: 2,
   tables: [
     tableSchema({
       name: "profiles",
@@ -42,9 +42,20 @@ export const schema = appSchema({
         { name: "body", type: "string" },
         { name: "msg_type", type: "string" },
         { name: "attachment_url", type: "string", isOptional: true },
+        { name: "attachment_meta", type: "string", isOptional: true },
         { name: "created_at", type: "number" },
+        { name: "edited_at", type: "number", isOptional: true },
+        { name: "deleted_at", type: "number", isOptional: true },
         // local-only: 'synced' | 'pending' | 'failed'
         { name: "status", type: "string" },
+      ],
+    }),
+    tableSchema({
+      name: "reactions",
+      columns: [
+        { name: "message_id", type: "string", isIndexed: true },
+        { name: "user_id", type: "string" },
+        { name: "emoji", type: "string" },
       ],
     }),
   ],

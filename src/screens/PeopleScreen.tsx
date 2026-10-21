@@ -51,18 +51,14 @@ export function PeopleScreen({ navigation }: any) {
     }
     setBusyId(person.id);
     try {
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({ is_group: false, created_by: user.id })
-        .select("id")
-        .single();
-      if (error || !room) throw error ?? new Error("Could not create chat");
-      const { error: memErr } = await supabase.from("room_members").insert([
-        { room_id: room.id, user_id: user.id },
-        { room_id: room.id, user_id: person.id },
-      ]);
-      if (memErr) throw memErr;
-      await upsertById(roomsCol as any, room.id, (rec: any) => {
+      // The web creates DMs only through this RPC (atomic
+      // find-or-create incl. both membership rows).
+      const { data: roomId, error } = await supabase.rpc(
+        "get_or_create_dm",
+        { _other: person.id },
+      );
+      if (error || !roomId) throw error ?? new Error("Could not create chat");
+      await upsertById(roomsCol as any, roomId as string, (rec: any) => {
         rec.isGroup = false;
         rec.isE2ee = false;
         rec.createdAt = new Date();
@@ -72,7 +68,7 @@ export function PeopleScreen({ navigation }: any) {
       });
       navigation.navigate("ChatsTab", {
         screen: "Chat",
-        params: { roomId: room.id, title: person.displayName },
+        params: { roomId: roomId as string, title: person.displayName },
       });
     } catch {
       Alert.alert(
