@@ -26,6 +26,7 @@ import { CallsScreen } from "./src/screens/CallsScreen";
 import { YouScreen } from "./src/screens/YouScreen";
 import { ScreenHead } from "./src/components/ScreenHead";
 import { CallOverlay } from "./src/components/CallOverlay";
+import { CrashGuard } from "./src/components/CrashGuard";
 import { Avatar } from "./src/components/Avatar";
 import { colors, font } from "./src/theme";
 
@@ -167,9 +168,11 @@ function Root() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <Root />
-      </AuthProvider>
+      <CrashGuard>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
+      </CrashGuard>
     </SafeAreaProvider>
   );
 }
