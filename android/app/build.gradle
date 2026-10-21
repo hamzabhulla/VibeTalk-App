@@ -93,15 +93,23 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            // Release key: keystore is decoded from the ANDROID_KEYSTORE_BASE64
+            // repo secret in CI (see .github/workflows/android.yml). Passwords
+            // come from env vars; local release builds need them set too.
+            storeFile file(System.getenv('MYAPP_RELEASE_STORE_FILE') ?: 'vibetalk-release.keystore')
+            storePassword System.getenv('MYAPP_RELEASE_STORE_PASSWORD')
+            keyAlias System.getenv('MYAPP_RELEASE_KEY_ALIAS') ?: 'vibetalk'
+            keyPassword System.getenv('MYAPP_RELEASE_KEY_PASSWORD')
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Signed with the dedicated release keystore (see signingConfigs.release above).
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
