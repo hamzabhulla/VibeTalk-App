@@ -75,7 +75,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Decode release keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/vibetalk-release.keystore
+        run: base64 --decode android/keystore.b64 > android/app/vibetalk-release.keystore
 
       - name: Build release APK
         working-directory: android
