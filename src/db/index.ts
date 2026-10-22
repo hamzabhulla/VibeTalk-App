@@ -8,7 +8,11 @@ const adapter = new SQLiteAdapter({
   schema,
   migrations,
   dbName: "vibetalk",
-  jsi: true,
+  // JSI DISABLED (v1.0.13 diagnostic): jsi:true ran at import time and
+  // threw when the JSI bindings weren't installed yet — top-level throw
+  // in release = instant crash before React mounts. Async bridge mode
+  // is reliable; the perf difference is negligible for a chat app.
+  jsi: false,
   onSetUpError: (error) => {
     // Surfaced in dev; a corrupt local DB self-heals by reset in the
     // sync layer (worst case the user re-syncs from the server).
