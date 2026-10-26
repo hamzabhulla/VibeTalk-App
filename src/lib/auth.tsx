@@ -29,13 +29,17 @@ function bootUserServices(uid: string, fallbackName: string) {
     .select("display_name")
     .eq("id", uid)
     .maybeSingle()
-    .then(({ data }) => {
-      initCalls(uid, (data as any)?.display_name ?? fallbackName);
-    })
-    .catch(() => {
-      // Offline at boot: still bring the call engine up with a fallback name.
-      initCalls(uid, fallbackName);
-    });
+    .then(
+      ({ data }) => {
+        initCalls(uid, (data as any)?.display_name ?? fallbackName);
+      },
+      () => {
+        // Offline at boot: still bring the call engine up with a fallback name.
+        // (Two-arg .then() instead of .catch(): supabase-js .then() returns a
+        // PromiseLike, which has no .catch — TS2339. Runtime behavior identical.)
+        initCalls(uid, fallbackName);
+      },
+    );
 }
 
 type AuthState = {
